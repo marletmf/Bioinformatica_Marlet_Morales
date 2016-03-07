@@ -56,7 +56,7 @@ close(SEQ);
 
 # calculate NN free energy of a DNA duplex , dG(t) = (1000*dH - t*dS) / 1000
 # parameters: 1) DNA sequence string; 2) Celsius temperature
-# returns; 1)  Hash con dos llaves: 1)Vector que contiene el valor de D(n) para cada n de la secuencia que esté dentro del rango permitido 2)Valores de E1(n)
+# returns; 1)  Hash con tres llaves: 1)Vector que contiene el valor de D(n) para cada n de la secuencia que esté dentro del rango permitido 2)Valores de E1(n), 3)Valores de E2(n).
 # uses global hash %NNparams
 # uses global hash %Secuencias_K12
 sub duplex_deltaG
@@ -159,10 +159,11 @@ sub duplex_deltaG
 		$D[$i]=$E1[$i]-$E2[$i];
 	}
 
-	my %D_E1;
-	$D_E1{'D'}=\@D;
-	$D_E1{'E1'}=\@E1;
-	return %D_E1;
+	my %D_E;
+	$D_E{'D'}=\@D;
+	$D_E{'E1'}=\@E1;
+	$D_E{'E2'}=\@E2;
+	return %D_E;
 }
 
 
@@ -170,20 +171,55 @@ sub duplex_deltaG
 
 my $llave;
 my %deltaGs;
+my @D_n;
+my @E1_n;
+my @E2_n;
+
 my $filename = 'Prediccion_promotores.txt';
+
 open(my $fh, '>', $filename) or die "Could not open file '$filename' $!";
 foreach $llave (sort(keys %Secuencias_K12)){
 	my %result=duplex_deltaG($Secuencias_K12{$llave}, $T);
+
 	$deltaGs{$llave}= \%result;
+
 	my $seq=$Secuencias_K12{$llave};
 	my $numero_n=(length $seq)-($windowL+$windowL_E1+$windowL_E2+$window_dist-2);
 	print $fh ("Nombre: $llave\n");
+
+	for (my $i=0; $i<$numero_n; $i++){
+		$D_n[$i]=0;
+		$E1_n[$i]=0;
+		$E2_n[$i]=0;
+	}
+
 	for(my $i=0; $i<$numero_n; $i++){
 		print $fh ("\tD(n) $i: $result{'D'}[$i]\n");
+		$D_n[$i]+=$result{'D'}[$i];
+		
 	}
 	for(my $i=0; $i<$numero_n; $i++){
 		print $fh ("\tE1(n) $i: $result{'E1'}[$i]\n");
+		$E1_n[$i]+=$result{'E1'}[$i];
+		$E2_n[$i]+=$result{'E2'}[$i];
 	}
 }
 close $fh;
 print "done\n";
+
+
+###########################
+
+#Calcular el promedio de D, E1 y E2 para cada n
+
+my $filename = 'Promedio_promotores.txt';
+open(my $fh, '>', $filename) or die "Could not open file '$filename' $!";
+print $fh "D(n)\n";
+print $fh join(", ", @D_n);
+print $fh "\nE1(n)\n";
+print $fh join(", ", @E1_n);
+print $fh "\nE2(n)\n";
+print $fh join(", ", @E2_n);
+close $fh;
+print "done\n";
+
